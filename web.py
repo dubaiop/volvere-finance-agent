@@ -43,6 +43,64 @@ REC_COLOR = {"BUY": "#10b981", "HOLD": "#f59e0b", "SELL": "#ef4444"}
 RISK_COLOR = {"LOW": "#34d399", "MEDIUM": "#f59e0b", "HIGH": "#ef4444"}
 MARKET_FLAG = {"UAE/MENA": "🇦🇪", "Morocco": "🇲🇦", "Global": "🌍"}
 
+# Asset → platform URL (opens directly to trade/chart page)
+ASSET_LINKS = {
+    # UAE
+    "DFM": "https://www.dfm.ae/the-exchange/market-information/market-summary",
+    "ADX": "https://www.adx.ae/English/Pages/MarketSummary.aspx",
+    "AED": "https://www.xe.com/currencyconverter/convert/?Amount=1&From=AED&To=USD",
+    "UAE Banking": "https://www.dfm.ae/the-exchange/listed-securities/equities",
+    "UAE Real Estate": "https://www.dfm.ae/the-exchange/listed-securities/equities",
+    "TASI": "https://www.saudiexchange.sa/wps/portal/saudiexchange/home",
+    # Morocco
+    "CSE": "https://www.casablanca-bourse.com/bourseweb/Liste-valeurs.aspx?Cat=2",
+    "MAD": "https://www.xe.com/currencyconverter/convert/?Amount=1&From=MAD&To=USD",
+    "Attijariwafa": "https://www.casablanca-bourse.com/bourseweb/Fiche-valeur.aspx?s=ATW",
+    "OCP": "https://www.casablanca-bourse.com/bourseweb/Fiche-valeur.aspx?s=OCP",
+    "Maroc Telecom": "https://www.casablanca-bourse.com/bourseweb/Fiche-valeur.aspx?s=IAM",
+    # Crypto → Binance
+    "Bitcoin": "https://www.binance.com/en/trade/BTC_USDT",
+    "BTC": "https://www.binance.com/en/trade/BTC_USDT",
+    "Ethereum": "https://www.binance.com/en/trade/ETH_USDT",
+    "ETH": "https://www.binance.com/en/trade/ETH_USDT",
+    # Global → TradingView
+    "Gold": "https://www.tradingview.com/symbols/XAUUSD/",
+    "Oil": "https://www.tradingview.com/symbols/USOIL/",
+    "Crude Oil": "https://www.tradingview.com/symbols/USOIL/",
+    "S&P 500": "https://www.tradingview.com/symbols/SPY/",
+    "SPX": "https://www.tradingview.com/symbols/SPY/",
+    "NASDAQ": "https://www.tradingview.com/symbols/QQQ/",
+    "EUR/USD": "https://www.tradingview.com/symbols/EURUSD/",
+    "USD": "https://www.tradingview.com/symbols/EURUSD/",
+}
+
+# Ticker → platform URL for positions table
+TICKER_LINKS = {
+    "BTC-USD": "https://www.binance.com/en/trade/BTC_USDT",
+    "ETH-USD": "https://www.binance.com/en/trade/ETH_USDT",
+    "GC=F": "https://www.tradingview.com/symbols/XAUUSD/",
+    "CL=F": "https://www.tradingview.com/symbols/USOIL/",
+    "SPY": "https://www.tradingview.com/symbols/SPY/",
+    "QQQ": "https://www.tradingview.com/symbols/QQQ/",
+    "FM": "https://finance.yahoo.com/quote/FM/",
+    "EURUSD=X": "https://www.tradingview.com/symbols/EURUSD/",
+}
+
+
+def _asset_links_html(assets_str: str) -> str:
+    """Convert comma-separated assets string into clickable links."""
+    if not assets_str or assets_str == "—":
+        return "—"
+    parts = []
+    for asset in assets_str.split(", "):
+        asset = asset.strip()
+        url = ASSET_LINKS.get(asset)
+        if url:
+            parts.append(f'<a href="{url}" target="_blank" style="color:var(--a2);text-decoration:none;border-bottom:1px dotted var(--a2)" title="Open {asset} on trading platform">{asset}</a>')
+        else:
+            parts.append(f'<span style="color:var(--m2)">{asset}</span>')
+    return ", ".join(parts)
+
 
 @app.get("/", response_class=HTMLResponse)
 def dashboard(market: str = "All"):
@@ -64,7 +122,7 @@ def dashboard(market: str = "All"):
         rec_color = REC_COLOR.get(rec, "#f59e0b")
         risk_color = RISK_COLOR.get(risk, "#f59e0b")
         finbert = s.get("finbert_label", "—")
-        assets = s.get("assets", "—")
+        assets = _asset_links_html(s.get("assets", "—"))
         advice = (s.get("advice_summary") or "")[:120]
         stop_loss = s.get("stop_loss", "") or ""
         allocation = s.get("allocation", "") or ""
@@ -82,7 +140,7 @@ def dashboard(market: str = "All"):
           <td style="color:{rec_color};font-weight:700;text-align:center">{rec}</td>
           <td style="color:{risk_color};text-align:center;font-size:11px">{risk}</td>
           <td style="color:var(--m2);font-size:11px">{finbert.upper()}</td>
-          <td style="color:var(--m2);font-size:11px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{assets}</td>
+          <td style="font-size:11px;max-width:200px">{assets}</td>
           <td style="color:var(--m2);font-size:11px">{source}</td>
           <td style="color:var(--m);font-size:11px;white-space:nowrap">{analyzed}</td>
           <td style="text-align:center">{alerted}</td>
@@ -108,10 +166,11 @@ def dashboard(market: str = "All"):
         p5 = "✅" if e.get("profit_alerted_5") else "—"
         p10 = "✅" if e.get("profit_alerted_10") else "—"
         stop = "🛡" if e.get("stop_alerted") else "—"
+        ticker_url = TICKER_LINKS.get(ticker, f"https://finance.yahoo.com/quote/{ticker}/")
         position_rows += f"""
         <tr>
           <td style="font-weight:600">{asset}</td>
-          <td><code style="font-size:11px;color:var(--a2)">{ticker}</code></td>
+          <td><a href="{ticker_url}" target="_blank" style="text-decoration:none"><code style="font-size:11px;color:var(--a2);border-bottom:1px dotted var(--a2)">{ticker}</code></a></td>
           <td style="color:var(--green)">${entry_p:,.4f}</td>
           <td style="color:var(--m);font-size:11px">{entry_d}</td>
           <td style="color:var(--m2);font-size:11px">{headline}{'...' if len(e.get('signal_headline',''))>60 else ''}</td>
