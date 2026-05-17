@@ -1,4 +1,4 @@
-"""Runs UAE market intelligence scan every 4 hours."""
+"""Runs multi-market financial intelligence scan every 4 hours."""
 
 import logging
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -11,14 +11,14 @@ TZ = pytz.timezone("Asia/Dubai")
 
 
 def run_market_scan():
-    logger.info("Starting UAE market intelligence scan...")
+    logger.info("Starting multi-market financial intelligence scan (UAE/MENA + Morocco + Global)...")
     try:
-        from news_fetcher import fetch_uae_news
+        from news_fetcher import fetch_all_news
         from sentiment import analyze_article
         from database import already_analyzed, save_signal
         from telegram_alerts import alert_market_signal, alert_scan_summary
 
-        articles = fetch_uae_news(max_per_query=4)
+        articles = fetch_all_news(max_per_query=4)
         analyzed = 0
         bullish_count = 0
         bearish_count = 0
@@ -31,10 +31,11 @@ def run_market_scan():
 
             headline = article["headline"]
             body = article.get("body", "")
+            market = article.get("market", "Global")
             if not headline:
                 continue
 
-            result = analyze_article(headline, body)
+            result = analyze_article(headline, body, market)
             analyzed += 1
 
             label = result["sentiment_label"]
@@ -49,11 +50,17 @@ def run_market_scan():
                     headline=headline,
                     source=article.get("source", "Unknown"),
                     url=url,
+                    market=market,
                     sentiment_label=label,
                     sentiment_score=result["sentiment_score"],
                     assets=result["assets"],
                     reasoning=result["reasoning"],
                     finbert_label=result["finbert_label"],
+                    recommendation=result["recommendation"],
+                    risk_level=result["risk_level"],
+                    stop_loss=result["stop_loss"],
+                    allocation=result["allocation"],
+                    advice_summary=result["advice_summary"],
                 )
                 alerts_fired += 1
 
@@ -62,6 +69,7 @@ def run_market_scan():
                 headline=headline,
                 source=article.get("source", ""),
                 published=article.get("published", ""),
+                market=market,
                 finbert_label=result["finbert_label"],
                 finbert_score=result["finbert_score"],
                 sentiment_label=label,
@@ -69,6 +77,11 @@ def run_market_scan():
                 confidence=result["confidence"],
                 assets=result["assets"],
                 reasoning=result["reasoning"],
+                recommendation=result["recommendation"],
+                risk_level=result["risk_level"],
+                stop_loss=result["stop_loss"],
+                allocation=result["allocation"],
+                advice_summary=result["advice_summary"],
                 alerted=alerted,
             )
 

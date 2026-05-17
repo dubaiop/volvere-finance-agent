@@ -1,7 +1,7 @@
 """
-Two-layer sentiment analysis:
+Two-layer sentiment + investment advice analysis:
   Layer 1 — FinBERT (HuggingFace ProsusAI/finbert): fast financial sentiment score
-  Layer 2 — Claude: UAE market context, affected assets, alert-worthy reasoning
+  Layer 2 — Claude: market context, affected assets, investment recommendation
 """
 
 import json
@@ -24,7 +24,6 @@ def _finbert_score(text: str) -> dict:
                           json={"inputs": text[:512]}, timeout=15)
         r.raise_for_status()
         data = r.json()
-        # HF returns [[{label, score}, ...]] — pick highest score
         candidates = data[0] if isinstance(data[0], list) else data
         best = max(candidates, key=lambda x: x["score"])
         return {"label": best["label"].lower(), "score": round(best["score"], 4)}
@@ -33,33 +32,52 @@ def _finbert_score(text: str) -> dict:
         return {"label": "neutral", "score": 0.0}
 
 
-def _claude_analyze(headline: str, body: str) -> dict:
-    """Deep Claude analysis for UAE market context."""
+def _claude_analyze(headline: str, body: str, market: str = "Global") -> dict:
+    """Deep Claude analysis with investment recommendation."""
     system = (
-        "You are a financial intelligence analyst specializing in UAE/MENA markets. "
-        "Given a news headline and body, return ONLY valid JSON with this structure:\n"
+        f"You are a senior financial analyst specializing in {market} markets. "
+        "Given a news headline and body, return ONLY valid JSON with this exact structure:\n"
         '{"sentiment_score": <float -1.0 to 1.0>, '
         '"sentiment_label": "<STRONG_BULLISH|BULLISH|NEUTRAL|BEARISH|STRONG_BEARISH>", '
         '"confidence": <float 0.0 to 1.0>, '
-        '"assets": ["<DFM|ADX|TASI|AED|Oil|Gold|UAE Real Estate|UAE Banking|...>"], '
-        '"reasoning": "<2-3 sentence analysis focused on UAE/MENA market impact>"}\n\n'
+        '"assets": ["<ticker or asset name>"], '
+        '"reasoning": "<2-3 sentence analysis of market impact>", '
+        '"recommendation": "<BUY|HOLD|SELL>", '
+        '"risk_level": "<LOW|MEDIUM|HIGH>", '
+        '"stop_loss": "<e.g. 5% below entry or specific level>", '
+        '"allocation": "<e.g. 10-15% of portfolio or increase/reduce by X%>", '
+        '"advice_summary": "<1-2 plain-language sentences: what an investor should do now>"}\n\n'
         "Score guide: +0.8/+1.0=major bullish, +0.4/+0.7=bullish, -0.2/+0.2=neutral, "
-        "-0.4/-0.7=bearish, -0.8/-1.0=major bearish."
+        "-0.4/-0.7=bearish, -0.8/-1.0=major bearish.\n"
+        "Recommendation guide: BUY=bullish signal with good risk/reward, "
+        "SELL=bearish signal or deteriorating fundamentals, HOLD=neutral or wait for clarity.\n"
+        "Risk guide: HIGH=volatile event/crisis, MEDIUM=macro shift, LOW=stable trend.\n"
+        f"Use assets relevant to {market} markets (e.g. for UAE: DFM, ADX, AED, Oil, Gold; "
+        "for Morocco: CSE, MAD, Attijariwafa, OCP, Maroc Telecom; "
+        "for Global: SPX, NASDAQ, BTC, Gold, Oil, EUR/USD)."
     )
-    prompt = f"Headline: {headline}\n\nBody: {body[:800]}"
+    prompt = f"Market: {market}\nHeadline: {headline}\n\nBody: {body[:800]}"
     result = _llm_call(system, prompt)
     try:
         return json.loads(result.strip())
     except Exception:
         match = re.search(r'\{[\s\S]*\}', result)
         if match:
-            return json.loads(match.group())
+            try:
+                return json.loads(match.group())
+            except Exception:
+                pass
         return {
             "sentiment_score": 0.0,
             "sentiment_label": "NEUTRAL",
             "confidence": 0.5,
             "assets": [],
-            "reasoning": result[:200]
+            "reasoning": result[:200],
+            "recommendation": "HOLD",
+            "risk_level": "MEDIUM",
+            "stop_loss": "N/A",
+            "allocation": "Maintain current allocation",
+            "advice_summary": "Insufficient data for a clear recommendation.",
         }
 
 
@@ -68,7 +86,7 @@ def _llm_call(system: str, prompt: str) -> str:
         try:
             import anthropic
             r = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY).messages.create(
-                model=CLAUDE_MODEL, max_tokens=512, system=system,
+                model=CLAUDE_MODEL, max_tokens=700, system=system,
                 messages=[{"role": "user", "content": prompt}]
             )
             return r.content[0].text
@@ -81,22 +99,19 @@ def _llm_call(system: str, prompt: str) -> str:
         r = client.chat.completions.create(
             model=GROQ_MODEL,
             messages=[{"role": "system", "content": system}, {"role": "user", "content": prompt}],
-            max_tokens=512, temperature=0.1
+            max_tokens=700, temperature=0.1
         )
         return r.choices[0].message.content
     raise RuntimeError("No API key configured.")
 
 
-def analyze_article(headline: str, body: str) -> dict:
-    """
-    Full two-layer analysis.
-    Returns combined result with finbert + claude data.
-    """
+def analyze_article(headline: str, body: str, market: str = "Global") -> dict:
+    """Full two-layer analysis with investment recommendation."""
     # Layer 1: FinBERT (fast)
     finbert = _finbert_score(headline + " " + body[:200])
 
-    # Layer 2: Claude (deep)
-    claude = _claude_analyze(headline, body)
+    # Layer 2: Claude (deep, with market context)
+    claude = _claude_analyze(headline, body, market)
 
     # Map FinBERT label to numeric for blending
     fb_map = {"positive": 0.6, "negative": -0.6, "neutral": 0.0}
@@ -127,5 +142,10 @@ def analyze_article(headline: str, body: str) -> dict:
         "confidence": claude.get("confidence", 0.5),
         "assets": claude.get("assets", []),
         "reasoning": claude.get("reasoning", ""),
+        "recommendation": claude.get("recommendation", "HOLD"),
+        "risk_level": claude.get("risk_level", "MEDIUM"),
+        "stop_loss": claude.get("stop_loss", "N/A"),
+        "allocation": claude.get("allocation", "Maintain current allocation"),
+        "advice_summary": claude.get("advice_summary", ""),
         "alert_worthy": alert_worthy,
     }
