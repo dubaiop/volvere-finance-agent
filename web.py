@@ -5,7 +5,7 @@ from datetime import datetime
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
 from config import PORT
-from database import init_db, get_signals, get_stats
+from database import init_db, get_signals, get_stats, get_active_entries
 
 app = FastAPI(title="Financial Intelligence Agent", version="2.0.0")
 _scheduler = None
@@ -48,6 +48,7 @@ MARKET_FLAG = {"UAE/MENA": "🇦🇪", "Morocco": "🇲🇦", "Global": "🌍"}
 def dashboard(market: str = "All"):
     stats = get_stats()
     signals = get_signals(limit=100, market=market if market != "All" else None)
+    entries = get_active_entries()
     today = datetime.now().strftime("%A, %B %d")
 
     signal_rows = ""
@@ -95,6 +96,29 @@ def dashboard(market: str = "All"):
     sells = stats.get("sells", 0)
     bull_pct = round(bullish / total * 100) if total else 0
     bear_pct = round(bearish / total * 100) if total else 0
+
+    # Active positions section
+    position_rows = ""
+    for e in entries:
+        ticker = e.get("ticker", "")
+        asset = e.get("asset_name", ticker)
+        entry_p = e.get("entry_price", 0)
+        entry_d = (e.get("entry_date") or "")[:16]
+        headline = (e.get("signal_headline") or "")[:60]
+        p5 = "✅" if e.get("profit_alerted_5") else "—"
+        p10 = "✅" if e.get("profit_alerted_10") else "—"
+        stop = "🛡" if e.get("stop_alerted") else "—"
+        position_rows += f"""
+        <tr>
+          <td style="font-weight:600">{asset}</td>
+          <td><code style="font-size:11px;color:var(--a2)">{ticker}</code></td>
+          <td style="color:var(--green)">${entry_p:,.4f}</td>
+          <td style="color:var(--m);font-size:11px">{entry_d}</td>
+          <td style="color:var(--m2);font-size:11px">{headline}{'...' if len(e.get('signal_headline',''))>60 else ''}</td>
+          <td style="text-align:center">{p5}</td>
+          <td style="text-align:center">{p10}</td>
+          <td style="text-align:center">{stop}</td>
+        </tr>"""
 
     tabs = ""
     for tab_market in ["All", "UAE/MENA", "Morocco", "Global"]:
@@ -183,6 +207,19 @@ def dashboard(market: str = "All"):
     </div>
   </div>
 
+  <div class="section-label">Active BUY Positions — Profit Tracking</div>
+  {f'''<div class="table-wrap" style="margin-bottom:28px">
+    <table>
+      <thead>
+        <tr>
+          <th>Asset</th><th>Ticker</th><th>Entry Price</th><th>Recorded</th>
+          <th>Signal</th><th>+5%</th><th>+10%</th><th>Stop</th>
+        </tr>
+      </thead>
+      <tbody>{position_rows}</tbody>
+    </table>
+  </div>''' if position_rows else f'<div style="background:var(--s);border:1px solid var(--b);border-radius:var(--r);padding:24px;color:var(--m);font-size:13px;margin-bottom:28px">No active BUY positions yet — positions are recorded automatically when the agent fires a high-confidence BUY signal.</div>'}
+
   <div class="section-label">Market Signals</div>
   <div class="tabs">{tabs}</div>
   <div style="color:var(--m);font-size:11px;margin-bottom:10px">Hover over a row to see investment advice, stop-loss, and allocation details.</div>
@@ -235,6 +272,20 @@ def trigger_scan():
     from scheduler import run_market_scan
     threading.Thread(target=run_market_scan, daemon=True).start()
     return {"status": "started", "message": "Scanning UAE/MENA + Morocco + Global — check Telegram for alerts"}
+
+
+@app.post("/price/check")
+def manual_price_check():
+    """Manually trigger volume spike + profit check."""
+    import threading
+    from scheduler import run_price_checks
+    threading.Thread(target=run_price_checks, daemon=True).start()
+    return {"status": "started", "message": "Price check running — check Telegram"}
+
+
+@app.get("/positions")
+def positions_api():
+    return get_active_entries()
 
 
 @app.get("/signals")

@@ -72,6 +72,51 @@ def alert_market_signal(headline: str, source: str, url: str,
     _send(text)
 
 
+def alert_volume_spike(spiked: list):
+    """Alert when unusual volume detected on watchlist assets."""
+    lines = ["⚡ <b>VOLUME SPIKE DETECTED</b>\n━━━━━━━━━━━━━━━━━━━━"]
+    for ticker, name, q in spiked:
+        direction = "📈" if q["change_pct"] >= 0 else "📉"
+        lines.append(
+            f"\n{direction} <b>{name}</b> (<code>{ticker}</code>)\n"
+            f"💰 Price: <b>${q['price']:,.4f}</b> ({q['change_pct']:+.2f}%)\n"
+            f"📊 Volume: <b>{q['volume_ratio']:.1f}x</b> above average\n"
+            f"⚠️ High activity — consider reviewing position"
+        )
+    lines.append("\n💡 Check your Financial Intelligence dashboard for latest signals.")
+    _send("\n".join(lines))
+
+
+def alert_take_profit(asset_name: str, ticker: str, entry: float, current: float,
+                      change_pct: float, level: int = 1):
+    emoji = "🎯" if level == 1 else "🚀"
+    label = f"+{change_pct:.1f}% — {'Take partial profit' if level == 1 else 'STRONG PROFIT — Consider full exit'}"
+    text = (
+        f"{emoji} <b>TAKE PROFIT ALERT</b>\n"
+        f"━━━━━━━━━━━━━━━━━━━━\n"
+        f"💼 <b>{asset_name}</b> (<code>{ticker}</code>)\n\n"
+        f"📥 Entry price: <b>${entry:,.4f}</b>\n"
+        f"📤 Current price: <b>${current:,.4f}</b>\n"
+        f"📈 Gain: <b style='color:green'>{label}</b>\n\n"
+        f"✅ Your BUY signal is profitable. Consider taking profit now."
+    )
+    _send(text)
+
+
+def alert_stop_loss(asset_name: str, ticker: str, entry: float, current: float,
+                    change_pct: float):
+    text = (
+        f"🛡 <b>STOP-LOSS WARNING</b>\n"
+        f"━━━━━━━━━━━━━━━━━━━━\n"
+        f"💼 <b>{asset_name}</b> (<code>{ticker}</code>)\n\n"
+        f"📥 Entry price: <b>${entry:,.4f}</b>\n"
+        f"📤 Current price: <b>${current:,.4f}</b>\n"
+        f"📉 Loss: <b>{change_pct:.1f}%</b>\n\n"
+        f"⚠️ Stop-loss level reached. Consider exiting to protect capital."
+    )
+    _send(text)
+
+
 def alert_scan_summary(total: int, bullish: int, bearish: int, alerts_fired: int):
     text = (
         f"📊 <b>Multi-Market Scan Complete</b>\n"

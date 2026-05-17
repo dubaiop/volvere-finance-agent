@@ -44,6 +44,19 @@ def run_market_scan():
             elif "BEARISH" in label:
                 bearish_count += 1
 
+            # Auto-register BUY entries for profit tracking
+            if result["recommendation"] == "BUY" and result["confidence"] >= 0.65:
+                try:
+                    from price_monitor import assets_to_tickers, _get_quote
+                    from database import add_price_entry
+                    for ticker in assets_to_tickers(result["assets"]):
+                        q = _get_quote(ticker)
+                        if q and q["price"] > 0:
+                            add_price_entry(ticker, ticker, q["price"], headline)
+                            logger.info(f"BUY entry recorded: {ticker} @ {q['price']:.4f}")
+                except Exception as pe:
+                    logger.warning(f"Could not record price entry: {pe}")
+
             alerted = result["alert_worthy"]
             if alerted:
                 alert_market_signal(
@@ -94,12 +107,25 @@ def run_market_scan():
         logger.error(f"Market scan error: {e}", exc_info=True)
 
 
+def run_price_checks():
+    """Volume spike detection + profit/stop-loss monitoring."""
+    logger.info("Running price checks (volume spikes + profit targets)...")
+    try:
+        from price_monitor import check_volume_spikes, check_profit_targets
+        check_volume_spikes()
+        check_profit_targets()
+    except Exception as e:
+        logger.error(f"Price check error: {e}", exc_info=True)
+
+
 def start_scheduler() -> BackgroundScheduler:
     scheduler = BackgroundScheduler(timezone=TZ)
-    # Full scan every 4 hours
+    # Full news scan every 4 hours
     scheduler.add_job(run_market_scan, IntervalTrigger(hours=4), id="market_scan", replace_existing=True)
     # Morning briefing at 8am Dubai
     scheduler.add_job(run_market_scan, CronTrigger(hour=8, minute=0, timezone=TZ), id="morning_briefing", replace_existing=True)
+    # Price monitoring every 30 minutes
+    scheduler.add_job(run_price_checks, IntervalTrigger(minutes=30), id="price_monitor", replace_existing=True)
     scheduler.start()
-    logger.info("Finance scheduler started — scan every 4h + 8am Dubai briefing")
+    logger.info("Finance scheduler started — news scan every 4h + 8am Dubai briefing + price check every 30min")
     return scheduler

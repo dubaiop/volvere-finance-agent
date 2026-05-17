@@ -19,6 +19,20 @@ def init_db():
         with _conn() as conn:
             with conn.cursor() as cur:
                 cur.execute("""
+                    CREATE TABLE IF NOT EXISTS price_entries (
+                        id SERIAL PRIMARY KEY,
+                        ticker TEXT NOT NULL,
+                        asset_name TEXT,
+                        entry_price REAL NOT NULL,
+                        entry_date TEXT,
+                        signal_headline TEXT,
+                        profit_alerted_5 BOOLEAN DEFAULT FALSE,
+                        profit_alerted_10 BOOLEAN DEFAULT FALSE,
+                        stop_alerted BOOLEAN DEFAULT FALSE,
+                        active BOOLEAN DEFAULT TRUE
+                    )
+                """)
+                cur.execute("""
                     CREATE TABLE IF NOT EXISTS market_signals (
                         id SERIAL PRIMARY KEY,
                         url TEXT UNIQUE,
@@ -58,6 +72,20 @@ def init_db():
             conn.commit()
     else:
         with _conn() as conn:
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS price_entries (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    ticker TEXT NOT NULL,
+                    asset_name TEXT,
+                    entry_price REAL NOT NULL,
+                    entry_date TEXT,
+                    signal_headline TEXT,
+                    profit_alerted_5 INTEGER DEFAULT 0,
+                    profit_alerted_10 INTEGER DEFAULT 0,
+                    stop_alerted INTEGER DEFAULT 0,
+                    active INTEGER DEFAULT 1
+                )
+            """)
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS market_signals (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -191,3 +219,65 @@ def get_stats() -> dict:
             sells = conn.execute("SELECT COUNT(*) FROM market_signals WHERE recommendation='SELL'").fetchone()[0]
     return {"total": total, "bullish": bullish, "bearish": bearish,
             "alerts_sent": alerts, "buys": buys, "sells": sells}
+
+
+# ── Price entries (volume spike & profit tracking) ──────────────────────────
+
+def add_price_entry(ticker: str, asset_name: str, entry_price: float,
+                    signal_headline: str = "") -> int:
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    if DATABASE_URL:
+        with _conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    INSERT INTO price_entries (ticker, asset_name, entry_price, entry_date, signal_headline)
+                    VALUES (%s, %s, %s, %s, %s) RETURNING id
+                """, (ticker, asset_name, entry_price, now, signal_headline))
+                row_id = cur.fetchone()[0]
+            conn.commit()
+            return row_id
+    else:
+        with _conn() as conn:
+            cur = conn.execute("""
+                INSERT INTO price_entries (ticker, asset_name, entry_price, entry_date, signal_headline)
+                VALUES (?, ?, ?, ?, ?)
+            """, (ticker, asset_name, entry_price, now, signal_headline))
+            conn.commit()
+            return cur.lastrowid
+
+
+def get_active_entries() -> list[dict]:
+    if DATABASE_URL:
+        with _conn() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("SELECT * FROM price_entries WHERE active=TRUE ORDER BY entry_date DESC")
+                return [dict(r) for r in cur.fetchall()]
+    else:
+        with _conn() as conn:
+            rows = conn.execute("SELECT * FROM price_entries WHERE active=1 ORDER BY entry_date DESC").fetchall()
+            return [dict(r) for r in rows]
+
+
+def mark_profit_alerted(entry_id: int, level: int):
+    col = "profit_alerted_10" if level == 2 else "profit_alerted_5"
+    if DATABASE_URL:
+        with _conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute(f"UPDATE price_entries SET {col}=TRUE WHERE id=%s", (entry_id,))
+            conn.commit()
+    else:
+        with _conn() as conn:
+            conn.execute(f"UPDATE price_entries SET {col}=1 WHERE id=?", (entry_id,))
+            conn.commit()
+
+
+def mark_stop_alerted(entry_id: int):
+    if DATABASE_URL:
+        with _conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute("UPDATE price_entries SET stop_alerted=TRUE, active=FALSE WHERE id=%s", (entry_id,))
+            conn.commit()
+    else:
+        with _conn() as conn:
+            conn.execute("UPDATE price_entries SET stop_alerted=1, active=0 WHERE id=?", (entry_id,))
+            conn.commit()
