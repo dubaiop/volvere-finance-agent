@@ -41,7 +41,7 @@ LABEL_EMOJI = {
 }
 REC_COLOR = {"BUY": "#10b981", "HOLD": "#f59e0b", "SELL": "#ef4444"}
 RISK_COLOR = {"LOW": "#34d399", "MEDIUM": "#f59e0b", "HIGH": "#ef4444"}
-MARKET_FLAG = {"UAE/MENA": "🇦🇪", "Morocco": "🇲🇦", "Global": "🌍"}
+MARKET_FLAG = {"UAE": "🇦🇪", "Kuwait": "🇰🇼", "Europe": "🇪🇺", "Japan": "🇯🇵", "Global": "🌍"}
 
 # Asset → platform URL (opens directly to trade/chart page)
 ASSET_LINKS = {
@@ -51,13 +51,24 @@ ASSET_LINKS = {
     "AED": "https://www.xe.com/currencyconverter/convert/?Amount=1&From=AED&To=USD",
     "UAE Banking": "https://www.dfm.ae/the-exchange/listed-securities/equities",
     "UAE Real Estate": "https://www.dfm.ae/the-exchange/listed-securities/equities",
-    "TASI": "https://www.saudiexchange.sa/wps/portal/saudiexchange/home",
-    # Morocco
-    "CSE": "https://www.casablanca-bourse.com/bourseweb/Liste-valeurs.aspx?Cat=2",
-    "MAD": "https://www.xe.com/currencyconverter/convert/?Amount=1&From=MAD&To=USD",
-    "Attijariwafa": "https://www.casablanca-bourse.com/bourseweb/Fiche-valeur.aspx?s=ATW",
-    "OCP": "https://www.casablanca-bourse.com/bourseweb/Fiche-valeur.aspx?s=OCP",
-    "Maroc Telecom": "https://www.casablanca-bourse.com/bourseweb/Fiche-valeur.aspx?s=IAM",
+    # Kuwait
+    "KSE": "https://www.boursakuwait.com.kw/en",
+    "Boursa Kuwait": "https://www.boursakuwait.com.kw/en",
+    "KWD": "https://www.xe.com/currencyconverter/convert/?Amount=1&From=KWD&To=USD",
+    "Kuwait": "https://www.boursakuwait.com.kw/en",
+    # Europe
+    "FTSE 100": "https://www.tradingview.com/symbols/FTSE/",
+    "FTSE": "https://www.tradingview.com/symbols/FTSE/",
+    "DAX": "https://www.tradingview.com/symbols/XETR-DAX/",
+    "CAC 40": "https://www.tradingview.com/symbols/EURONEXT-PX1/",
+    "Euro Stoxx": "https://www.tradingview.com/symbols/EURONEXT-SX5E/",
+    "EUR": "https://www.tradingview.com/symbols/EURUSD/",
+    # Japan
+    "Nikkei": "https://www.tradingview.com/symbols/TVC-NI225/",
+    "Nikkei 225": "https://www.tradingview.com/symbols/TVC-NI225/",
+    "TSE": "https://www.jpx.co.jp/english/",
+    "JPY": "https://www.tradingview.com/symbols/USDJPY/",
+    "Japan": "https://www.tradingview.com/symbols/TVC-NI225/",
     # Crypto → Binance
     "Bitcoin": "https://www.binance.com/en/trade/BTC_USDT",
     "BTC": "https://www.binance.com/en/trade/BTC_USDT",
@@ -180,7 +191,7 @@ def dashboard(market: str = "All"):
         </tr>"""
 
     tabs = ""
-    for tab_market in ["All", "UAE/MENA", "Morocco", "Global"]:
+    for tab_market in ["All", "UAE", "Kuwait", "Europe", "Japan", "Global"]:
         flag = MARKET_FLAG.get(tab_market, "🌐")
         active = "border-bottom:2px solid var(--a);color:var(--text)" if market == tab_market else "color:var(--m2)"
         tabs += f'<a href="/?market={tab_market}" style="padding:8px 16px;text-decoration:none;font-size:13px;font-weight:600;{active}">{flag if tab_market != "All" else "🌐"} {tab_market}</a>'
@@ -235,7 +246,7 @@ def dashboard(market: str = "All"):
 <main>
   <div style="margin-bottom:8px;color:var(--m2);font-size:13px">{today}</div>
   <h1>🌍 Global Financial Intelligence</h1>
-  <p class="sub">FinBERT + Claude analysis across 🇦🇪 UAE/MENA · 🇲🇦 Morocco · 🌍 Global markets. BUY/HOLD/SELL signals + risk + stop-loss. Alerts on Telegram.</p>
+  <p class="sub">FinBERT + Claude analysis across 🇦🇪 UAE · 🇰🇼 Kuwait · 🇪🇺 Europe · 🇯🇵 Japan · 🌍 Global markets. BUY/HOLD/SELL signals + risk + stop-loss. Alerts on Telegram.</p>
 
   <div class="metrics">
     <div class="m-card">

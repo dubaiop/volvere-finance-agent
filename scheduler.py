@@ -11,7 +11,7 @@ TZ = pytz.timezone("Asia/Dubai")
 
 
 def run_market_scan():
-    logger.info("Starting multi-market financial intelligence scan (UAE/MENA + Morocco + Global)...")
+    logger.info("Starting multi-market scan (UAE + Kuwait + Europe + Japan + Global)...")
     try:
         from news_fetcher import fetch_all_news
         from sentiment import analyze_article

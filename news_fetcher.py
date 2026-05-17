@@ -1,4 +1,4 @@
-"""Fetch financial news for UAE/MENA, Morocco, and Global markets via DuckDuckGo."""
+"""Fetch financial news for UAE, Kuwait, Europe, Japan, and Global markets via DuckDuckGo."""
 
 import logging
 from duckduckgo_search import DDGS
@@ -6,37 +6,51 @@ from duckduckgo_search import DDGS
 logger = logging.getLogger(__name__)
 
 MARKET_QUERIES = {
-    "UAE/MENA": [
+    "UAE": [
         "UAE stock market DFM ADX news today",
         "Dubai Financial Market news",
         "Abu Dhabi Securities Exchange ADX today",
         "UAE economy GDP investment news",
-        "Saudi Arabia TASI stock market",
-        "MENA finance banking news today",
         "UAE real estate investment fund",
-        "Gulf oil energy market news",
         "UAE central bank CBUAE policy",
         "Dubai economy business news today",
+        "UAE banking sector news today",
     ],
-    "Morocco": [
-        "Bourse de Casablanca CSE stock market today",
-        "Morocco economy investment news",
-        "Maroc Telecom Attijariwafa bank stock",
-        "Morocco MAD dirham exchange rate",
-        "Bank Al-Maghrib monetary policy Morocco",
-        "Morocco GDP growth investment 2025",
-        "OCP Group Maroc phosphate stock news",
-        "Morocco real estate infrastructure news",
+    "Kuwait": [
+        "Kuwait Stock Exchange KSE news today",
+        "Kuwait economy investment news",
+        "Kuwait Central Bank monetary policy",
+        "Boursa Kuwait market news today",
+        "Kuwait dinar KWD investment news",
+        "Kuwait oil fund sovereign wealth",
+        "Kuwait GDP growth business news",
+    ],
+    "Europe": [
+        "FTSE 100 London stock market news today",
+        "DAX Frankfurt stock market Germany news",
+        "CAC 40 Paris stock market France news",
+        "European Central Bank ECB interest rate",
+        "Euro Stoxx 50 European stocks today",
+        "European economy GDP inflation news",
+        "Euronext stock exchange news today",
+    ],
+    "Japan": [
+        "Nikkei 225 Tokyo stock market news today",
+        "Japan economy Bank of Japan policy",
+        "TSE Tokyo Stock Exchange news today",
+        "Japanese yen JPY exchange rate news",
+        "Japan GDP growth investment news",
+        "Sony Toyota Softbank stock market Japan",
+        "Japan inflation interest rate news today",
     ],
     "Global": [
         "S&P 500 NASDAQ stock market news today",
         "Federal Reserve interest rate decision",
         "Bitcoin crypto market news today",
         "Gold silver commodities price news",
-        "FTSE 100 European stock market today",
-        "China economy stock market news",
         "Oil price OPEC energy market today",
         "Global inflation recession forecast 2025",
+        "US dollar DXY currency market news",
     ],
 }
 
@@ -65,10 +79,9 @@ def fetch_all_news(max_per_query: int = 4) -> list[dict]:
             except Exception as e:
                 logger.warning(f"DuckDuckGo query failed for '{query}': {e}")
 
-    logger.info(f"Fetched {len(articles)} unique articles across UAE/MENA, Morocco, Global")
+    logger.info(f"Fetched {len(articles)} unique articles across UAE, Kuwait, Europe, Japan, Global")
     return articles
 
 
-# Keep backwards-compatible alias
 def fetch_uae_news(max_per_query: int = 4) -> list[dict]:
     return fetch_all_news(max_per_query)

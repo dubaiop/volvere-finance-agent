@@ -18,8 +18,10 @@ REC_EMOJI = {"BUY": "🟢", "HOLD": "🟡", "SELL": "🔴"}
 RISK_EMOJI = {"LOW": "🔵", "MEDIUM": "🟠", "HIGH": "🔴"}
 
 MARKET_FLAG = {
-    "UAE/MENA": "🇦🇪",
-    "Morocco": "🇲🇦",
+    "UAE": "🇦🇪",
+    "Kuwait": "🇰🇼",
+    "Europe": "🇪🇺",
+    "Japan": "🇯🇵",
     "Global": "🌍",
 }
 
@@ -121,7 +123,7 @@ def alert_scan_summary(total: int, bullish: int, bearish: int, alerts_fired: int
     text = (
         f"📊 <b>Multi-Market Scan Complete</b>\n"
         f"━━━━━━━━━━━━━━━━━━━━\n"
-        f"🇦🇪 UAE/MENA + 🇲🇦 Morocco + 🌍 Global\n"
+        f"🇦🇪 UAE · 🇰🇼 Kuwait · 🇪🇺 Europe · 🇯🇵 Japan · 🌍 Global\n"
         f"📰 Articles analyzed: <b>{total}</b>\n"
         f"📈 Bullish signals: <b>{bullish}</b>\n"
         f"📉 Bearish signals: <b>{bearish}</b>\n"

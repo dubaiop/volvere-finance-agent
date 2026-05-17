@@ -53,7 +53,9 @@ def _claude_analyze(headline: str, body: str, market: str = "Global") -> dict:
         "SELL=bearish signal or deteriorating fundamentals, HOLD=neutral or wait for clarity.\n"
         "Risk guide: HIGH=volatile event/crisis, MEDIUM=macro shift, LOW=stable trend.\n"
         f"Use assets relevant to {market} markets (e.g. for UAE: DFM, ADX, AED, Oil, Gold; "
-        "for Morocco: CSE, MAD, Attijariwafa, OCP, Maroc Telecom; "
+        "for Kuwait: KSE, Boursa Kuwait, KWD, Oil; "
+        "for Europe: FTSE 100, DAX, CAC 40, Euro Stoxx, EUR; "
+        "for Japan: Nikkei 225, TSE, JPY, Sony, Toyota; "
         "for Global: SPX, NASDAQ, BTC, Gold, Oil, EUR/USD)."
     )
     prompt = f"Market: {market}\nHeadline: {headline}\n\nBody: {body[:800]}"
